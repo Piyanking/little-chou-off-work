@@ -83,19 +83,35 @@
                     data.forEach(item => {
                         if (!item.time) return;
 
-                        // 直接透過 Date 物件安全解析 ISO 格式 (帶有 T 和 Z 的字串)
-                        let itemDate = new Date(item.time);
-                        if (isNaN(itemDate.getTime())) return;
+                        let timeStr = String(item.time).trim();
+                        let datePart = "";
+                        let timePart = "";
 
-                        let y = itemDate.getFullYear();
-                        let m = String(itemDate.getMonth() + 1).padStart(2, '0');
-                        let d = String(itemDate.getDate()).padStart(2, '0');
-                        let datePart = `${y}-${m}-${d}`;
+                        // 判斷是否為 ISO 格式（帶有 T 和 Z，例如 2026-07-28T07:46:47.000Z）
+                        if (timeStr.includes('T')) {
+                            let itemDate = new Date(timeStr);
+                            if (isNaN(itemDate.getTime())) return;
+                            
+                            // 強制轉為台灣時間 (+8) 來比對和顯示
+                            let utcTime = itemDate.getTime();
+                            let twDate = new Date(utcTime + (8 * 60 * 60 * 1000));
 
-                        let hh = String(itemDate.getHours()).padStart(2, '0');
-                        let mm = String(itemDate.getMinutes()).padStart(2, '0');
-                        let ss = String(itemDate.getSeconds()).padStart(2, '0');
-                        let timePart = `${hh}:${mm}:${ss}`;
+                            let y = twDate.getUTCFullYear();
+                            let m = String(twDate.getUTCMonth() + 1).padStart(2, '0');
+                            let d = String(twDate.getUTCDate()).padStart(2, '0');
+                            datePart = `${y}-${m}-${d}`;
+
+                            let hh = String(twDate.getUTCHours()).padStart(2, '0');
+                            let mm = String(twDate.getUTCMinutes()).padStart(2, '0');
+                            let ss = String(twDate.getUTCSeconds()).padStart(2, '0');
+                            timePart = `${hh}:${mm}:${ss}`;
+                        } else {
+                            // 一般格式 "2026-07-28 15:46:47"
+                            let parts = timeStr.split(' ');
+                            if (parts.length < 2) return;
+                            datePart = parts[0];
+                            timePart = parts[1];
+                        }
 
                         // 比對今天
                         if (datePart === todayStr) {
@@ -108,10 +124,14 @@
                         }
 
                         // 七天平均計算
-                        let diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
+                        let itemDateCheck = new Date(timeStr);
+                        let diffDays = (now - itemDateCheck) / (1000 * 60 * 60 * 24);
                         if (diffDays <= 7 && diffDays >= 0) {
-                            let minutes = itemDate.getHours() * 60 + itemDate.getMinutes();
-                            last7DaysTimes.push(minutes);
+                            let tParts = timePart.split(':');
+                            if (tParts.length >= 2) {
+                                let minutes = parseInt(tParts[0]) * 60 + parseInt(tParts[1]);
+                                last7DaysTimes.push(minutes);
+                            }
                         }
                     });
 
