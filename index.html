@@ -18,7 +18,7 @@
 <body>
 
     <div class="card">
-        <h2>🔥賴打今天下班了嗎？</h2>
+        <h2>🔥 賴打今天下班了嗎？</h2>
         <button onclick="recordOffWork()">下班了</button>
         <div id="status"></div>
 
@@ -31,7 +31,6 @@
     </div>
 
     <script>
-        // 請將此處換成你的 Google Apps Script 部署網址
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwkAso0PZ5Qcvs4cyL9yQZunqCreS4P5v7y_0zga29GNGecmiIc_yMUliF1hrN3a5QyeA/exec';
 
         window.onload = function() {
@@ -75,9 +74,10 @@
                     yesterday.setDate(now.getDate() - 1);
                     const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
+                    // 用來記錄每一天「最後一筆」的分鐘數物件 { "2026-07-28": 953, "2026-07-27": 1020, ... }
+                    let dailyLastMinutes = {};
                     let todayLast = null;
                     let yesterdayLast = null;
-                    let last7DaysTimes = [];
 
                     data.forEach(item => {
                         if (!item.time) return;
@@ -85,13 +85,12 @@
                         let timeStr = String(item.time).trim();
                         let datePart = "";
                         let timePart = "";
+                        let itemMinutes = 0;
 
-                        // 判斷是否為 ISO 格式（帶有 T 和 Z，例如 2026-07-28T07:46:47.000Z）
                         if (timeStr.includes('T')) {
                             let itemDate = new Date(timeStr);
                             if (isNaN(itemDate.getTime())) return;
                             
-                            // 強制轉為台灣時間 (+8) 來比對和顯示
                             let utcTime = itemDate.getTime();
                             let twDate = new Date(utcTime + (8 * 60 * 60 * 1000));
 
@@ -104,46 +103,55 @@
                             let mm = String(twDate.getUTCMinutes()).padStart(2, '0');
                             let ss = String(twDate.getUTCSeconds()).padStart(2, '0');
                             timePart = `${hh}:${mm}:${ss}`;
+
+                            itemMinutes = twDate.getUTCHours() * 60 + twDate.getUTCMinutes();
                         } else {
-                            // 一般格式 "2026-07-28 15:46:47"
                             let parts = timeStr.split(' ');
                             if (parts.length < 2) return;
                             datePart = parts[0];
                             timePart = parts[1];
+
+                            let tParts = timePart.split(':');
+                            if (tParts.length >= 2) {
+                                itemMinutes = parseInt(tParts[0]) * 60 + parseInt(tParts[1]);
+                            }
                         }
 
-                        // 比對今天
+                        // 獨立指定今天與昨天
                         if (datePart === todayStr) {
-                            todayLast = timePart; // 持續覆蓋，保留最後一筆
+                            todayLast = timePart;
                         }
-
-                        // 比對昨天
                         if (datePart === yesterdayStr) {
                             yesterdayLast = timePart;
                         }
 
-                        // 七天平均計算
-                        let itemDateCheck = new Date(timeStr);
-                        let diffDays = (now - itemDateCheck) / (1000 * 60 * 60 * 24);
-                        if (diffDays <= 7 && diffDays >= 0) {
-                            let tParts = timePart.split(':');
-                            if (tParts.length >= 2) {
-                                let minutes = parseInt(tParts[0]) * 60 + parseInt(tParts[1]);
-                                last7DaysTimes.push(minutes);
-                            }
-                        }
+                        // 每一天持續覆蓋，確保最後留下的都是該天最後一筆的時間（以分鐘計算）
+                        dailyLastMinutes[datePart] = itemMinutes;
                     });
 
-                    // 更新畫面
+                    // 更新畫面：今天與昨天
                     document.getElementById('todayTime').innerText = todayLast ? todayLast : '尚未記錄';
                     document.getElementById('yesterdayTime').innerText = yesterdayLast ? yesterdayLast : '無紀錄';
 
-                    if (last7DaysTimes.length > 0) {
-                        const totalMinutes = last7DaysTimes.reduce((a, b) => a + b, 0);
-                        const avgMinutes = Math.round(totalMinutes / last7DaysTimes.length);
+                    // 計算「最近 7 天內」每天最後一筆的平均值
+                    let last7DaysMinutes = [];
+                    for (let i = 0; i < 7; i++) {
+                        let d = new Date();
+                        d.setDate(now.getDate() - i);
+                        let dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        
+                        // 如果這一天有記錄到下班時間（取當天最後一筆）
+                        if (dailyLastMinutes[dStr] !== undefined) {
+                            last7DaysMinutes.push(dailyLastMinutes[dStr]);
+                        }
+                    }
+
+                    if (last7DaysMinutes.length > 0) {
+                        const totalMinutes = last7DaysMinutes.reduce((a, b) => a + b, 0);
+                        const avgMinutes = Math.round(totalMinutes / last7DaysMinutes.length);
                         const avgHour = String(Math.floor(avgMinutes / 60)).padStart(2, '0');
                         const avgMin = String(avgMinutes % 60).padStart(2, '0');
-                        document.getElementById('avgTime').innerText = `${avgHour}:${avgMin}`;
+                        document.getElementById('avgTime').innerText = `${avgHour}:${avgMin} (共統計 ${last7DaysDaysCheck(last7DaysMinutes.length)} 天)`; // 簡單修正字串
                     } else {
                         document.getElementById('avgTime').innerText = '資料不足';
                     }
@@ -151,6 +159,11 @@
                 .catch(err => {
                     console.error('無法取得統計數據', err);
                 });
+        }
+        
+        // 輔助顯示天數的簡易函式
+        function last7DaysDaysCheck(len) {
+            return len;
         }
     </script>
 </body>
