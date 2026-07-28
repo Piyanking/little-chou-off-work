@@ -69,7 +69,6 @@
                 .then(data => {
                     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-                    // 取得本地時間的 YYYY-MM-DD
                     const now = new Date();
                     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -83,16 +82,24 @@
 
                     data.forEach(item => {
                         if (!item.time) return;
-                        // item.time 格式例如 "2026-07-28 15:53:30"
-                        let parts = String(item.time).trim().split(' ');
-                        if (parts.length < 2) return;
 
-                        let datePart = parts[0]; // "2026-07-28"
-                        let timePart = parts[1]; // "15:53:30"
+                        // 直接透過 Date 物件安全解析 ISO 格式 (帶有 T 和 Z 的字串)
+                        let itemDate = new Date(item.time);
+                        if (isNaN(itemDate.getTime())) return;
+
+                        let y = itemDate.getFullYear();
+                        let m = String(itemDate.getMonth() + 1).padStart(2, '0');
+                        let d = String(itemDate.getDate()).padStart(2, '0');
+                        let datePart = `${y}-${m}-${d}`;
+
+                        let hh = String(itemDate.getHours()).padStart(2, '0');
+                        let mm = String(itemDate.getMinutes()).padStart(2, '0');
+                        let ss = String(itemDate.getSeconds()).padStart(2, '0');
+                        let timePart = `${hh}:${mm}:${ss}`;
 
                         // 比對今天
                         if (datePart === todayStr) {
-                            todayLast = timePart; // 會一直覆蓋，直到變成今天最後一筆
+                            todayLast = timePart; // 持續覆蓋，保留最後一筆
                         }
 
                         // 比對昨天
@@ -101,14 +108,10 @@
                         }
 
                         // 七天平均計算
-                        let itemDate = new Date(item.time.replace(/-/g, '/'));
                         let diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
                         if (diffDays <= 7 && diffDays >= 0) {
-                            let tParts = timePart.split(':');
-                            if (tParts.length >= 2) {
-                                let minutes = parseInt(tParts[0]) * 60 + parseInt(tParts[1]);
-                                last7DaysTimes.push(minutes);
-                            }
+                            let minutes = itemDate.getHours() * 60 + itemDate.getMinutes();
+                            last7DaysTimes.push(minutes);
                         }
                     });
 
