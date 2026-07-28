@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>小舟下班即時回報系統</title>
+    <title>經理下班即時回報系統</title>
     <style>
         body { font-family: sans-serif; text-align: center; margin-top: 30px; background-color: #f4f4f9; color: #333; }
         .card { background: white; padding: 25px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; max-width: 90%; }
@@ -19,7 +19,7 @@
 
     <div class="card">
         <h2>🚨 小舟今天下班了嗎？</h2>
-        <p>確認離開，請按下按鈕！</p>
+        <p>確認離開！</p>
         <button onclick="recordOffWork()">回報小舟已下班！</button>
         <div id="status"></div>
 
@@ -35,7 +35,6 @@
         // 請將此處換成你的 Google Apps Script 部署網址
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwkAso0PZ5Qcvs4cyL9yQZunqCreS4P5v7y_0zga29GNGecmiIc_yMUliF1hrN3a5QyeA/exec';
 
-        // 網頁載入時自動抓取歷史數據
         window.onload = function() {
             fetchStats();
         };
@@ -54,8 +53,8 @@
                 statusDiv.innerText = '✨ 成功記錄！';
                 setTimeout(() => { 
                     statusDiv.innerText = ''; 
-                    fetchStats(); // 重新整理統計數據
-                }, 1500);
+                    fetchStats(); 
+                }, 2000);
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -64,61 +63,59 @@
             });
         }
 
-        // 抓取並計算統計數據（含今天最後一筆、昨天、七天平均）
         function fetchStats() {
             fetch(WEB_APP_URL)
                 .then(response => response.json())
                 .then(data => {
-                    if (!data || data.length === 0) return;
+                    if (!data || !Array.isArray(data) || data.length === 0) return;
 
-                    // 取得今天日期字串 (YYYY-MM-DD)
+                    // 取得本地時間的 YYYY-MM-DD
                     const now = new Date();
-                    const todayStr = now.toISOString().split('T')[0];
+                    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-                    // 取得昨天日期字串 (YYYY-MM-DD)
                     const yesterday = new Date();
                     yesterday.setDate(now.getDate() - 1);
-                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
                     let todayLast = null;
                     let yesterdayLast = null;
                     let last7DaysTimes = [];
 
-                    // 因為陣列是按時間正序排列，我們遍歷所有資料
                     data.forEach(item => {
-                        // item.time 格式例如 "2026-06-07 18:30:00"
                         if (!item.time) return;
-                        const datePart = item.time.split(' ')[0];
-                        const timePart = item.time.split(' ')[1]; // "18:30:00"
+                        // item.time 格式例如 "2026-07-28 15:53:30"
+                        let parts = String(item.time).trim().split(' ');
+                        if (parts.length < 2) return;
 
-                        // 找今天的最後一筆（只要有符合今天，就一直覆蓋，直到變成最後一筆）
+                        let datePart = parts[0]; // "2026-07-28"
+                        let timePart = parts[1]; // "15:53:30"
+
+                        // 比對今天
                         if (datePart === todayStr) {
-                            todayLast = timePart;
+                            todayLast = timePart; // 會一直覆蓋，直到變成今天最後一筆
                         }
 
-                        // 找昨天的最後一筆
+                        // 比對昨天
                         if (datePart === yesterdayStr) {
                             yesterdayLast = timePart;
                         }
 
-                        // 收集最近七天的時間來算平均
-                        // 這裡簡化計算：將時間轉為分鐘數進行平均
-                        const itemDate = new Date(item.time.replace(/-/g, '/'));
-                        const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
+                        // 七天平均計算
+                        let itemDate = new Date(item.time.replace(/-/g, '/'));
+                        let diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
                         if (diffDays <= 7 && diffDays >= 0) {
-                            const parts = timePart.split(':');
-                            const minutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                            last7DaysTimes.push(minutes);
+                            let tParts = timePart.split(':');
+                            if (tParts.length >= 2) {
+                                let minutes = parseInt(tParts[0]) * 60 + parseInt(tParts[1]);
+                                last7DaysTimes.push(minutes);
+                            }
                         }
                     });
 
-                    // 更新畫面：今天下班時間
+                    // 更新畫面
                     document.getElementById('todayTime').innerText = todayLast ? todayLast : '尚未記錄';
-
-                    // 更新畫面：昨天下班時間
                     document.getElementById('yesterdayTime').innerText = yesterdayLast ? yesterdayLast : '無紀錄';
 
-                    // 更新畫面：近七天平均下班
                     if (last7DaysTimes.length > 0) {
                         const totalMinutes = last7DaysTimes.reduce((a, b) => a + b, 0);
                         const avgMinutes = Math.round(totalMinutes / last7DaysTimes.length);
