@@ -2,65 +2,149 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>賴打下班沒</title>
+    <title>賴打下班沒 - 辦公室摸魚中心</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 30px; background-color: #f4f4f9; color: #333; }
-        .card { background: white; padding: 25px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 380px; max-width: 90%; }
-        button { background-color: #ff4757; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; }
-        button:hover { background-color: #ff6b81; }
-        #status { margin-top: 15px; font-weight: bold; color: #2ed573; min-height: 24px; }
-        .stats-box { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px; text-align: left; border: 1px solid #e9ecef; }
-        .stats-box h3 { margin-top: 0; font-size: 16px; color: #495057; border-bottom: 2px solid #dee2e6; padding-bottom: 5px; }
-        .stat-item { margin: 10px 0; font-size: 14px; }
+        body { font-family: sans-serif; text-align: center; margin: 20px; background-color: #f4f4f9; color: #333; }
+        
+        /* 三欄式排版設計 */
+        .layout-container {
+            display: grid;
+            grid-template-columns: 280px 420px 280px;
+            gap: 20px;
+            justify-content: center;
+            align-items: start;
+            max-width: 1020px;
+            margin: 0 auto;
+        }
+        @media (max-width: 950px) {
+            .layout-container { grid-template-columns: 1fr; }
+        }
+
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
+        
+        /* 卡片通用樣式 */
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        button.action-btn { background-color: #ff4757; color: white; border: none; padding: 12px 25px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; }
+        button.action-btn:hover { background-color: #ff6b81; }
+        #status { margin-top: 10px; font-weight: bold; color: #2ed573; min-height: 20px; }
+        
+        .stats-box { background: #f8f9fa; border-radius: 8px; padding: 12px; margin-top: 15px; text-align: left; border: 1px solid #e9ecef; }
+        .stats-box h3 { margin-top: 0; font-size: 15px; color: #495057; border-bottom: 2px solid #dee2e6; padding-bottom: 5px; }
+        .stat-item { margin: 8px 0; font-size: 13px; }
         .stat-value { font-weight: bold; color: #3b82f6; }
-        /* 股市看板樣式 */
-        .stock-grid { display: grid; grid-template-columns: 1fr; gap: 6px; font-size: 13px; }
-        .stock-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
-        .stock-up { color: #ff4757; font-weight: bold; } /* 漲紅 */
-        .stock-down { color: #2ed573; font-weight: bold; } /* 跌綠 */
+
+        /* 遊戲與輪盤區塊樣式 */
+        .game-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        .game-card h3 { margin-top: 0; color: #334155; font-size: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+
+        /* 2048 盤面 */
+        #game2048-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: #bbada0; padding: 4px; border-radius: 5px; width: 200px; height: 200px; margin: 10px auto; }
+        .tile { background: #cdc1b4; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; color: #776e65; border-radius: 3px; user-select: none; }
+        .tile-2 { background: #eee4da; } .tile-4 { background: #ede0c8; } .tile-8 { background: #f2b179; color: white; } .tile-16 { background: #f59563; color: white; }
+
+        /* Tetris 俄羅斯方塊與 Hold 區 */
+        .tetris-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #64748b; font-weight: bold; }
+        #hold-canvas { background: #1e293b; border-radius: 4px; width: 60px; height: 60px; display: inline-block; }
+        #tetris-canvas { background: #0f172a; border-radius: 6px; display: block; margin: 5px auto; }
+
+        /* 彩色大轉盤區塊 */
+        .bottom-roulette { max-width: 1020px; margin: 20px auto 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        .wheel-container { position: relative; width: 340px; height: 340px; margin: 15px auto; cursor: pointer; }
+        #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        /* 正上方指標 */
+        .wheel-pointer {
+            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent;
+            border-top: 25px solid #ffffff; z-index: 10; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+        }
+        /* 中心點按鈕 */
+        .wheel-center-btn {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80px; height: 80px; background: #1e293b; color: white;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: bold; text-align: center;
+            cursor: pointer; border: 4px solid #f59e0b; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 5;
+            user-select: none; transition: background 0.2s;
+        }
+        .wheel-center-btn:hover { background: #334155; }
+        #roulette-result { font-size: 18px; font-weight: bold; color: #e11d48; margin-top: 10px; min-height: 25px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>🔥 賴打今天下班了嗎？</h2>
-        <button onclick="recordOffWork()">下班了</button>
-        <div id="status"></div>
-
-        <div class="stats-box">
-            <h3>📊 數據統計</h3>
-            <div class="stat-item">今天下班時間：<span id="todayTime" class="stat-value">尚未記錄</span></div>
-            <div class="stat-item">昨天下班時間：<span id="yesterdayTime" class="stat-value">無紀錄</span></div>
-            <div class="stat-item">近七天平均下班：<span id="avgTime" class="stat-value">計算中...</span></div>
+    <div class="layout-container">
+        <!-- 左欄：2048 遊戲 -->
+        <div class="side-panel">
+            <div class="game-card">
+                <h3>🎮 2048</h3>
+                <p style="font-size: 11px; color: #666; margin: 4px 0;">使用方向鍵控制移動</p>
+                <div id="game2048-board"></div>
+                <div style="font-size: 13px; font-weight: bold;">分數：<span id="score2048">0</span></div>
+                <button onclick="init2048()" style="margin-top: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer;">重新開始</button>
+            </div>
         </div>
 
-        <div class="stats-box">
-            <h3>📈 辦公室即時台股看板</h3>
-            <div id="stock-container">載入中...</div>
+        <!-- 中間欄：打卡與統計主卡片 -->
+        <div class="card">
+            <h2>🔥 賴打今天下班了嗎？</h2>
+            <button class="action-btn" onclick="recordOffWork()">下班了</button>
+            <div id="status"></div>
+
+            <div class="stats-box">
+                <h3>📊 數據統計</h3>
+                <div class="stat-item">今天下班時間：<span id="todayTime" class="stat-value">尚未記錄</span></div>
+                <div class="stat-item">昨天下班時間：<span id="yesterdayTime" class="stat-value">無紀錄</span></div>
+                <div class="stat-item">近七天平均下班：<span id="avgTime" class="stat-value">計算中...</span></div>
+            </div>
         </div>
+
+        <!-- 右欄：俄羅斯方塊 Tetris -->
+        <div class="side-panel">
+            <div class="game-card">
+                <h3>🕹️ Tetris Battle</h3>
+                <div class="tetris-header">
+                    <div>
+                        <span>HOLD 暫存：</span><br>
+                        <canvas id="hold-canvas" width="60" height="60"></canvas>
+                    </div>
+                    <div style="text-align: right; font-size: 11px;">
+                        <span>← → 移動</span><br>
+                        <span>↑ 旋轉 | ↓ 加速</span><br>
+                        <span>空白鍵 瞬降 | C/Shift 暫存</span>
+                    </div>
+                </div>
+                <canvas id="tetris-canvas" width="140" height="240"></canvas>
+                <div style="font-size: 13px; font-weight: bold;">得分：<span id="tetrisScore">0</span></div>
+                <div style="display: flex; gap: 5px; margin-top: 8px;">
+                    <button onclick="startTetrisGame()" style="flex: 1; padding: 4px 6px; font-size: 12px; cursor: pointer; background-color: #22c55e; color: white; border: none; border-radius: 4px;">開始遊戲</button>
+                    <button onclick="initTetris()" style="flex: 1; padding: 4px 6px; font-size: 12px; cursor: pointer;">重新開始</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 下方：彩色大轉盤 -->
+    <div class="bottom-roulette">
+        <h3>🍽️ 吃什麼？</h3>
+        <div class="wheel-container">
+            <div class="wheel-pointer"></div>
+            <canvas id="wheel-canvas" width="400" height="400"></canvas>
+            <div class="wheel-center-btn" onclick="spinWheel()">EAT</div>
+        </div>
+        <div id="roulette-result">點擊中心 EAT 按鈕開始旋轉轉盤！</div>
     </div>
 
     <script>
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwkAso0PZ5Qcvs4cyL9yQZunqCreS4P5v7y_0zga29GNGecmiIc_yMUliF1hrN3a5QyeA/exec';
 
-        // 你指定的股票清單
-        const symbols = [
-            { code: '2330.TW', name: '台積電 (2330)' },
-            { code: '0050.TW', name: '元大台灣50 (0050)' },
-            { code: '00632R.TW', name: '元大台灣50反1 (00632R)' },
-            { code: '00631L.TW', name: '元大台灣50正2 (00631L)' },
-            { code: '2454.TW', name: '聯發科 (2454)' },
-            { code: '2383.TW', name: '台達電 (2383)' },
-            { code: '1326.TW', name: '台化 (1326)' },
-            { code: '2324.TW', name: '仁寶 (2324)' }
-        ];
-
         window.onload = function() {
             fetchStats();
-            fetchStocks();
-            setInterval(fetchStocks, 5000); // 每 5 秒自動更新一次股票
+            init2048();
+            setupTetrisCanvas();
+            initWheel();
         };
 
+        // --- 打卡與統計邏輯 ---
         function recordOffWork() {
             const statusDiv = document.getElementById('status');
             statusDiv.innerText = '傳送中...';
@@ -73,81 +157,23 @@
             })
             .then(() => {
                 statusDiv.innerText = '✨ 成功記錄！';
-                setTimeout(() => { 
-                    statusDiv.innerText = ''; 
-                    fetchStats(); 
-                }, 2000);
+                setTimeout(() => { statusDiv.innerText = ''; fetchStats(); }, 2000);
             })
             .catch(error => {
-                console.error('Error:', error);
                 statusDiv.style.color = 'red';
                 statusDiv.innerText = '❌ 記錄失敗';
             });
         }
 
-        // 抓取台股資訊
-        function fetchStocks() {
-            const container = document.getElementById('stock-container');
-            
-            let promises = symbols.map(stock => {
-                let url = `https://query1.finance.yahoo.com/v8/finance/chart/${stock.code}`;
-                return fetch(url)
-                    .then(res => res.json())
-                    .then(data => {
-                        const result = data.chart.result[0];
-                        const meta = result.meta;
-                        const currentPrice = meta.regularMarketPrice;
-                        const previousClose = meta.chartPreviousClose || meta.previousClose;
-                        
-                        const change = currentPrice - previousClose;
-                        const changePercent = (change / previousClose) * 100;
-                        
-                        return {
-                            name: stock.name,
-                            price: currentPrice.toFixed(2),
-                            change: change.toFixed(2),
-                            percent: changePercent.toFixed(2),
-                            isUp: change >= 0
-                        };
-                    })
-                    .catch(() => {
-                        return { name: stock.name, price: '讀取中', change: '', percent: '', isUp: true };
-                    });
-            });
-
-            Promise.all(promises).then(results => {
-                let html = '<div class="stock-grid">';
-                results.forEach(s => {
-                    if (s.price === '讀取中') {
-                        html += `<div class="stock-row"><span>${s.name}</span><span style="color:#888;">連線中...</span></div>`;
-                    } else {
-                        let colorClass = s.isUp ? 'stock-up' : 'stock-down';
-                        let sign = s.isUp ? '+' : '';
-                        html += `
-                            <div class="stock-row">
-                                <span><b>${s.name}</b></span>
-                                <span class="${colorClass}">
-                                    ${s.price} (${sign}${s.change} / ${sign}${s.percent}%)
-                                </span>
-                            </div>
-                        `;
-                    }
-                });
-                html += '</div>';
-                container.innerHTML = html;
-            });
-        }
-
-        // 抓取下班打卡統計數據
         function fetchStats() {
             fetch(WEB_APP_URL)
                 .then(response => response.json())
-                .then(data => {
+                .then(resData => {
+                    const data = resData.logs || resData;
                     if (!data || !Array.isArray(data) || data.length === 0) return;
 
                     const now = new Date();
                     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
                     const yesterday = new Date();
                     yesterday.setDate(now.getDate() - 1);
                     const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
@@ -158,49 +184,27 @@
 
                     data.forEach(item => {
                         if (!item.time) return;
-
                         let timeStr = String(item.time).trim();
-                        let datePart = "";
-                        let timePart = "";
-                        let itemMinutes = 0;
+                        let datePart = "", timePart = "", itemMinutes = 0;
 
                         if (timeStr.includes('T')) {
                             let itemDate = new Date(timeStr);
                             if (isNaN(itemDate.getTime())) return;
-                            
-                            let utcTime = itemDate.getTime();
-                            let twDate = new Date(utcTime + (8 * 60 * 60 * 1000));
-
-                            let y = twDate.getUTCFullYear();
-                            let m = String(twDate.getUTCMonth() + 1).padStart(2, '0');
-                            let d = String(twDate.getUTCDate()).padStart(2, '0');
-                            datePart = `${y}-${m}-${d}`;
-
-                            let hh = String(twDate.getUTCHours()).padStart(2, '0');
-                            let mm = String(twDate.getUTCMinutes()).padStart(2, '0');
-                            let ss = String(twDate.getUTCSeconds()).padStart(2, '0');
-                            timePart = `${hh}:${mm}:${ss}`;
-
+                            let twDate = new Date(itemDate.getTime() + (8 * 60 * 60 * 1000));
+                            datePart = `${twDate.getUTCFullYear()}-${String(twDate.getUTCMonth() + 1).padStart(2, '0')}-${String(twDate.getUTCDate()).padStart(2, '0')}`;
+                            timePart = `${String(twDate.getUTCHours()).padStart(2, '0')}:${String(twDate.getUTCMinutes()).padStart(2, '0')}:${String(twDate.getUTCSeconds()).padStart(2, '0')}`;
                             itemMinutes = twDate.getUTCHours() * 60 + twDate.getUTCMinutes();
                         } else {
                             let parts = timeStr.split(' ');
                             if (parts.length < 2) return;
                             datePart = parts[0];
                             timePart = parts[1];
-
                             let tParts = timePart.split(':');
-                            if (tParts.length >= 2) {
-                                itemMinutes = parseInt(tParts[0]) * 60 + parseInt(tParts[1]);
-                            }
+                            if (tParts.length >= 2) itemMinutes = parseInt(tParts[0]) * 60 + parseInt(tParts[1]);
                         }
 
-                        if (datePart === todayStr) {
-                            todayLast = timePart;
-                        }
-                        if (datePart === yesterdayStr) {
-                            yesterdayLast = timePart;
-                        }
-
+                        if (datePart === todayStr) todayLast = timePart;
+                        if (datePart === yesterdayStr) yesterdayLast = timePart;
                         dailyLastMinutes[datePart] = itemMinutes;
                     });
 
@@ -212,29 +216,345 @@
                         let d = new Date();
                         d.setDate(now.getDate() - i);
                         let dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                        
-                        if (dailyLastMinutes[dStr] !== undefined) {
-                            last7DaysMinutes.push(dailyLastMinutes[dStr]);
-                        }
+                        if (dailyLastMinutes[dStr] !== undefined) last7DaysMinutes.push(dailyLastMinutes[dStr]);
                     }
 
                     if (last7DaysMinutes.length > 0) {
                         const totalMinutes = last7DaysMinutes.reduce((a, b) => a + b, 0);
                         const avgMinutes = Math.round(totalMinutes / last7DaysMinutes.length);
-                        const avgHour = String(Math.floor(avgMinutes / 60)).padStart(2, '0');
-                        const avgMin = String(avgMinutes % 60).padStart(2, '0');
-                        document.getElementById('avgTime').innerText = `${avgHour}:${avgMin} (共統計 ${last7DaysDaysCheck(last7DaysMinutes.length)} 天)`;
+                        document.getElementById('avgTime').innerText = `${String(Math.floor(avgMinutes / 60)).padStart(2, '0')}:${String(avgMinutes % 60).padStart(2, '0')} (共統計 ${last7DaysMinutes.length} 天)`;
                     } else {
                         document.getElementById('avgTime').innerText = '資料不足';
                     }
-                })
-                .catch(err => {
-                    console.error('無法取得統計數據', err);
-                });
+                }).catch(err => console.error(err));
         }
-        
-        function last7DaysDaysCheck(len) {
-            return len;
+
+        // --- 2048 邏輯 ---
+        let board2048 = [], score2048 = 0;
+        function init2048() {
+            board2048 = Array(4).fill(0).map(() => Array(4).fill(0));
+            score2048 = 0;
+            addRandom2048(); addRandom2048();
+            update2048View();
+        }
+        function addRandom2048() {
+            let empty = [];
+            for(let r=0; r<4; r++) for(let c=0; c<4; c++) if(board2048[r][c] === 0) empty.push({r, c});
+            if(empty.length > 0) {
+                let cell = empty[Math.floor(Math.random() * empty.length)];
+                board2048[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4;
+            }
+        }
+        function update2048View() {
+            let html = '';
+            for(let r=0; r<4; r++) {
+                for(let c=0; c<4; c++) {
+                    let val = board2048[r][c];
+                    html += `<div class="tile tile-${val}">${val === 0 ? '' : val}</div>`;
+                }
+            }
+            document.getElementById('game2048-board').innerHTML = html;
+            document.getElementById('score2048').innerText = score2048;
+        }
+
+        // --- Tetris 俄羅斯方塊邏輯 ---
+        const BLOCK_SIZE = 20;
+        const COLS = 7;
+        const ROWS = 12;
+        let canvasTetris, ctxTetris, canvasHold, ctxHold;
+        let boardTetris = [];
+        let tetrisScore = 0;
+        let currentPiece = null;
+        let heldPiece = null;
+        let canHold = true;
+        let gameInterval = null;
+
+        const SHAPES = [
+            [[1, 1, 1, 1]], [[1, 1], [1, 1]], [[0, 1, 0], [1, 1, 1]],
+            [[1, 0, 0], [1, 1, 1]], [[0, 0, 1], [1, 1, 1]], [[0, 1, 1], [1, 1, 0]], [[1, 1, 0], [0, 1, 1]]
+        ];
+        const COLORS = ['#38bdf8', '#facc15', '#a855f7', '#f97316', '#3b82f6', '#22c55e', '#ef4444'];
+
+        function setupTetrisCanvas() {
+            canvasTetris = document.getElementById('tetris-canvas');
+            ctxTetris = canvasTetris.getContext('2d');
+            canvasHold = document.getElementById('hold-canvas');
+            ctxHold = canvasHold.getContext('2d');
+            
+            boardTetris = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
+            drawTetris();
+        }
+
+        function startTetrisGame() {
+            initTetris();
+        }
+
+        function initTetris() {
+            if (gameInterval) clearInterval(gameInterval);
+            boardTetris = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
+            tetrisScore = 0;
+            heldPiece = null;
+            canHold = true;
+            document.getElementById('tetrisScore').innerText = tetrisScore;
+            spawnPiece();
+            gameInterval = setInterval(updateTetris, 500);
+        }
+
+        function spawnPiece() {
+            let typeIdx = Math.floor(Math.random() * SHAPES.length);
+            currentPiece = {
+                shape: SHAPES[typeIdx], color: COLORS[typeIdx], type: typeIdx,
+                x: Math.floor(COLS / 2) - Math.floor(SHAPES[typeIdx][0].length / 2), y: 0
+            };
+            canHold = true;
+            if (checkCollision(0, 0, currentPiece.shape)) {
+                boardTetris = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
+            }
+            drawHoldView();
+        }
+
+        function checkCollision(offsetX, offsetY, shape) {
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c]) {
+                        let newX = currentPiece.x + c + offsetX;
+                        let newY = currentPiece.y + r + offsetY;
+                        if (newX < 0 || newX >= COLS || newY >= ROWS) return true;
+                        if (newY >= 0 && boardTetris[newY][newX]) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function mergePiece() {
+            currentPiece.shape.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value) {
+                        let y = currentPiece.y + r, x = currentPiece.x + c;
+                        if (y >= 0) boardTetris[y][x] = currentPiece.color;
+                    }
+                });
+            });
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (boardTetris[r].every(cell => cell !== 0)) {
+                    boardTetris.splice(r, 1);
+                    boardTetris.unshift(Array(COLS).fill(0));
+                    linesCleared++;
+                    r++;
+                }
+            }
+            if (linesCleared > 0) {
+                tetrisScore += linesCleared * 100;
+                document.getElementById('tetrisScore').innerText = tetrisScore;
+            }
+        }
+
+        function moveTetris(dir) {
+            if (!currentPiece) return;
+            if (!checkCollision(dir, 0, currentPiece.shape)) currentPiece.x += dir;
+        }
+
+        function rotateTetris() {
+            if (!currentPiece) return;
+            let rotated = currentPiece.shape[0].map((_, index) => currentPiece.shape.map(row => row[index]).reverse());
+            if (!checkCollision(0, 0, rotated)) currentPiece.shape = rotated;
+        }
+
+        function dropTetris() {
+            if (!currentPiece) return;
+            if (!checkCollision(0, 1, currentPiece.shape)) {
+                currentPiece.y++;
+            } else {
+                mergePiece(); clearLines(); spawnPiece();
+            }
+        }
+
+        function hardDrop() {
+            if (!currentPiece) return;
+            let dropDist = 0;
+            while (!checkCollision(0, dropDist + 1, currentPiece.shape)) dropDist++;
+            currentPiece.y += dropDist;
+            tetrisScore += dropDist * 2;
+            document.getElementById('tetrisScore').innerText = tetrisScore;
+            mergePiece(); clearLines(); spawnPiece();
+        }
+
+        function holdPieceFunc() {
+            if (!currentPiece || !canHold) return;
+            if (heldPiece === null) {
+                heldPiece = currentPiece.type; spawnPiece();
+            } else {
+                let temp = heldPiece;
+                heldPiece = currentPiece.type;
+                currentPiece = {
+                    shape: SHAPES[temp], color: COLORS[temp], type: temp,
+                    x: Math.floor(COLS / 2) - Math.floor(SHAPES[temp][0].length / 2), y: 0
+                };
+            }
+            canHold = false;
+            drawHoldView();
+        }
+
+        function drawHoldView() {
+            ctxHold.fillStyle = '#1e293b';
+            ctxHold.fillRect(0, 0, canvasHold.width, canvasHold.height);
+            if (heldPiece !== null) {
+                let shape = SHAPES[heldPiece], color = COLORS[heldPiece], size = 12;
+                let offsetX = (canvasHold.width - shape[0].length * size) / 2;
+                let offsetY = (canvasHold.height - shape.length * size) / 2;
+                shape.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        if (val) {
+                            ctxHold.fillStyle = color;
+                            ctxHold.fillRect(offsetX + c * size, offsetY + r * size, size - 1, size - 1);
+                        }
+                    });
+                });
+            }
+        }
+
+        function updateTetris() { dropTetris(); drawTetris(); }
+
+        function drawTetris() {
+            ctxTetris.fillStyle = '#0f172a';
+            ctxTetris.fillRect(0, 0, canvasTetris.width, canvasTetris.height);
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (boardTetris[r][c]) {
+                        ctxTetris.fillStyle = boardTetris[r][c];
+                        ctxTetris.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+                    }
+                }
+            }
+            if (currentPiece) {
+                currentPiece.shape.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value) {
+                            ctxTetris.fillStyle = currentPiece.color;
+                            ctxTetris.fillRect((currentPiece.x + c) * BLOCK_SIZE, (currentPiece.y + r) * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+                        }
+                    });
+                });
+            }
+        }
+
+        document.addEventListener('keydown', e => {
+            if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'KeyC', 'ShiftLeft', 'ShiftRight'].includes(e.code) || [' ', 'ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+                e.preventDefault();
+                if (e.key === 'ArrowLeft') moveTetris(-1);
+                else if (e.key === 'ArrowRight') moveTetris(1);
+                else if (e.key === 'ArrowDown') dropTetris();
+                else if (e.key === 'ArrowUp') rotateTetris();
+                else if (e.code === 'Space' || e.key === ' ') hardDrop();
+                else if (e.code === 'KeyC' || e.key.toLowerCase() === 'c' || e.code.includes('Shift')) holdPieceFunc();
+                drawTetris();
+            }
+        });
+
+        // --- 彩色大轉盤邏輯 (放大字體) ---
+        const foods = [
+            '自己煮', '火鍋', '牛排', '中餐', '西餐', '日式料理', '速食', 
+            '泰式料理', '韓式料理', '義式料理', '早午餐', '燒肉', '越南料理', 
+            '印度料理', '港式飲茶', '拉麵', '墨西哥料理', '甜點下午茶', '素食', '海鮮'
+        ];
+        const wheelColors = [
+            '#10b981', '#f97316', '#fb923c', '#fbbf24', '#3b82f6', '#8b5cf6', 
+            '#ef4444', '#14b8a6', '#ec4899', '#0ea5e9', '#84cc16', '#dc2626', 
+            '#059669', '#d97706', '#b91c1c', '#9333ea', '#f43f5e', '#db2777', 
+            '#16a34a', '#0284c7'
+        ];
+
+        let wheelCanvas, wheelCtx;
+        let currentAngle = 0;
+        let isSpinning = false;
+
+        function initWheel() {
+            wheelCanvas = document.getElementById('wheel-canvas');
+            wheelCtx = wheelCanvas.getContext('2d');
+            drawWheel(0);
+        }
+
+        function drawWheel(angle) {
+            let numSlices = foods.length;
+            let arcSize = (2 * Math.PI) / numSlices;
+            let center = wheelCanvas.width / 2;
+            let radius = center - 10;
+
+            wheelCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+            wheelCtx.save();
+            wheelCtx.translate(center, center);
+            wheelCtx.rotate(angle);
+
+            for (let i = 0; i < numSlices; i++) {
+                let startAngle = i * arcSize;
+                let endAngle = (i + 1) * arcSize;
+
+                wheelCtx.beginPath();
+                wheelCtx.moveTo(0, 0);
+                wheelCtx.arc(0, 0, radius, startAngle, endAngle);
+                wheelCtx.closePath();
+                wheelCtx.fillStyle = wheelColors[i % wheelColors.length];
+                wheelCtx.fill();
+                wheelCtx.strokeStyle = '#ffffff';
+                wheelCtx.lineWidth = 2;
+                wheelCtx.stroke();
+
+                // 繪製放大且加粗的文字
+                wheelCtx.save();
+                wheelCtx.rotate(startAngle + arcSize / 2);
+                wheelCtx.textAlign = 'right';
+                wheelCtx.fillStyle = '#ffffff';
+                wheelCtx.font = 'bold 15px sans-serif'; // 字體放大並加粗
+                wheelCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                wheelCtx.shadowBlur = 4;
+                wheelCtx.fillText(foods[i], radius - 20, 5);
+                wheelCtx.restore();
+            }
+            wheelCtx.restore();
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+            document.getElementById('roulette-result').innerText = '轉盤旋轉中... 🎯';
+
+            let numSlices = foods.length;
+            let arcSize = 360 / numSlices;
+            
+            let randomAdditionalSpins = (Math.floor(Math.random() * 4) + 5) * 360;
+            let randomSlice = Math.floor(Math.random() * numSlices);
+            
+            let targetAngle = currentAngle + randomAdditionalSpins + (360 - (randomSlice * arcSize + arcSize / 2) - 90) - (currentAngle % 360);
+
+            let startTime = null;
+            let duration = 4000;
+
+            function animateSpin(timestamp) {
+                if (!startTime) startTime = timestamp;
+                let elapsed = timestamp - startTime;
+                let progress = Math.min(elapsed / duration, 1);
+                
+                let easeProgress = 1 - Math.pow(1 - progress, 3);
+                let currentDeg = currentAngle + (targetAngle - currentAngle) * easeProgress;
+
+                drawWheel(currentDeg * Math.PI / 180);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    currentAngle = targetAngle % 360;
+                    isSpinning = false;
+                    let winningFood = foods[randomSlice];
+                    document.getElementById('roulette-result').innerText = `🎉 恭喜抽中：【 ${winningFood} 】！`;
+                }
+            }
+
+            requestAnimationFrame(animateSpin);
         }
     </script>
 </body>
