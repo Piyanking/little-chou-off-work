@@ -5,7 +5,7 @@
     <title>賴打下班沒</title>
     <style>
         body { font-family: sans-serif; text-align: center; margin-top: 30px; background-color: #f4f4f9; color: #333; }
-        .card { background: white; padding: 25px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; max-width: 90%; }
+        .card { background: white; padding: 25px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 380px; max-width: 90%; }
         button { background-color: #ff4757; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; }
         button:hover { background-color: #ff6b81; }
         #status { margin-top: 15px; font-weight: bold; color: #2ed573; min-height: 24px; }
@@ -13,6 +13,11 @@
         .stats-box h3 { margin-top: 0; font-size: 16px; color: #495057; border-bottom: 2px solid #dee2e6; padding-bottom: 5px; }
         .stat-item { margin: 10px 0; font-size: 14px; }
         .stat-value { font-weight: bold; color: #3b82f6; }
+        /* 股市看板樣式 */
+        .stock-grid { display: grid; grid-template-columns: 1fr; gap: 6px; font-size: 13px; }
+        .stock-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+        .stock-up { color: #ff4757; font-weight: bold; } /* 漲紅 */
+        .stock-down { color: #2ed573; font-weight: bold; } /* 跌綠 */
     </style>
 </head>
 <body>
@@ -28,13 +33,32 @@
             <div class="stat-item">昨天下班時間：<span id="yesterdayTime" class="stat-value">無紀錄</span></div>
             <div class="stat-item">近七天平均下班：<span id="avgTime" class="stat-value">計算中...</span></div>
         </div>
+
+        <div class="stats-box">
+            <h3>📈 辦公室即時台股看板</h3>
+            <div id="stock-container">載入中...</div>
+        </div>
     </div>
 
     <script>
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwkAso0PZ5Qcvs4cyL9yQZunqCreS4P5v7y_0zga29GNGecmiIc_yMUliF1hrN3a5QyeA/exec';
 
+        // 你指定的股票清單
+        const symbols = [
+            { code: '2330.TW', name: '台積電 (2330)' },
+            { code: '0050.TW', name: '元大台灣50 (0050)' },
+            { code: '00632R.TW', name: '元大台灣50反1 (00632R)' },
+            { code: '00631L.TW', name: '元大台灣50正2 (00631L)' },
+            { code: '2454.TW', name: '聯發科 (2454)' },
+            { code: '2383.TW', name: '台達電 (2383)' },
+            { code: '1326.TW', name: '台化 (1326)' },
+            { code: '2324.TW', name: '仁寶 (2324)' }
+        ];
+
         window.onload = function() {
             fetchStats();
+            fetchStocks();
+            setInterval(fetchStocks, 5000); // 每 5 秒自動更新一次股票
         };
 
         function recordOffWork() {
@@ -61,6 +85,60 @@
             });
         }
 
+        // 抓取台股資訊
+        function fetchStocks() {
+            const container = document.getElementById('stock-container');
+            
+            let promises = symbols.map(stock => {
+                let url = `https://query1.finance.yahoo.com/v8/finance/chart/${stock.code}`;
+                return fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        const result = data.chart.result[0];
+                        const meta = result.meta;
+                        const currentPrice = meta.regularMarketPrice;
+                        const previousClose = meta.chartPreviousClose || meta.previousClose;
+                        
+                        const change = currentPrice - previousClose;
+                        const changePercent = (change / previousClose) * 100;
+                        
+                        return {
+                            name: stock.name,
+                            price: currentPrice.toFixed(2),
+                            change: change.toFixed(2),
+                            percent: changePercent.toFixed(2),
+                            isUp: change >= 0
+                        };
+                    })
+                    .catch(() => {
+                        return { name: stock.name, price: '讀取中', change: '', percent: '', isUp: true };
+                    });
+            });
+
+            Promise.all(promises).then(results => {
+                let html = '<div class="stock-grid">';
+                results.forEach(s => {
+                    if (s.price === '讀取中') {
+                        html += `<div class="stock-row"><span>${s.name}</span><span style="color:#888;">連線中...</span></div>`;
+                    } else {
+                        let colorClass = s.isUp ? 'stock-up' : 'stock-down';
+                        let sign = s.isUp ? '+' : '';
+                        html += `
+                            <div class="stock-row">
+                                <span><b>${s.name}</b></span>
+                                <span class="${colorClass}">
+                                    ${s.price} (${sign}${s.change} / ${sign}${s.percent}%)
+                                </span>
+                            </div>
+                        `;
+                    }
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            });
+        }
+
+        // 抓取下班打卡統計數據
         function fetchStats() {
             fetch(WEB_APP_URL)
                 .then(response => response.json())
@@ -74,7 +152,6 @@
                     yesterday.setDate(now.getDate() - 1);
                     const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
-                    // 用來記錄每一天「最後一筆」的分鐘數物件 { "2026-07-28": 953, "2026-07-27": 1020, ... }
                     let dailyLastMinutes = {};
                     let todayLast = null;
                     let yesterdayLast = null;
@@ -117,7 +194,6 @@
                             }
                         }
 
-                        // 獨立指定今天與昨天
                         if (datePart === todayStr) {
                             todayLast = timePart;
                         }
@@ -125,22 +201,18 @@
                             yesterdayLast = timePart;
                         }
 
-                        // 每一天持續覆蓋，確保最後留下的都是該天最後一筆的時間（以分鐘計算）
                         dailyLastMinutes[datePart] = itemMinutes;
                     });
 
-                    // 更新畫面：今天與昨天
                     document.getElementById('todayTime').innerText = todayLast ? todayLast : '尚未記錄';
                     document.getElementById('yesterdayTime').innerText = yesterdayLast ? yesterdayLast : '無紀錄';
 
-                    // 計算「最近 7 天內」每天最後一筆的平均值
                     let last7DaysMinutes = [];
                     for (let i = 0; i < 7; i++) {
                         let d = new Date();
                         d.setDate(now.getDate() - i);
                         let dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                         
-                        // 如果這一天有記錄到下班時間（取當天最後一筆）
                         if (dailyLastMinutes[dStr] !== undefined) {
                             last7DaysMinutes.push(dailyLastMinutes[dStr]);
                         }
@@ -151,7 +223,7 @@
                         const avgMinutes = Math.round(totalMinutes / last7DaysMinutes.length);
                         const avgHour = String(Math.floor(avgMinutes / 60)).padStart(2, '0');
                         const avgMin = String(avgMinutes % 60).padStart(2, '0');
-                        document.getElementById('avgTime').innerText = `${avgHour}:${avgMin} (共統計 ${last7DaysDaysCheck(last7DaysMinutes.length)} 天)`; // 簡單修正字串
+                        document.getElementById('avgTime').innerText = `${avgHour}:${avgMin} (共統計 ${last7DaysDaysCheck(last7DaysMinutes.length)} 天)`;
                     } else {
                         document.getElementById('avgTime').innerText = '資料不足';
                     }
@@ -161,7 +233,6 @@
                 });
         }
         
-        // 輔助顯示天數的簡易函式
         function last7DaysDaysCheck(len) {
             return len;
         }
