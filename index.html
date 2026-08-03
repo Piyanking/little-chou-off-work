@@ -51,13 +51,11 @@
         .bottom-roulette { max-width: 1020px; margin: 20px auto 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
         .wheel-container { position: relative; width: 340px; height: 340px; margin: 15px auto; cursor: pointer; }
         #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        /* 正上方指標 */
         .wheel-pointer {
             position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
             width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent;
             border-top: 25px solid #ffffff; z-index: 10; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
         }
-        /* 中心點按鈕 */
         .wheel-center-btn {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 80px; height: 80px; background: #1e293b; color: white;
@@ -68,6 +66,41 @@
         }
         .wheel-center-btn:hover { background: #334155; }
         #roulette-result { font-size: 18px; font-weight: bold; color: #e11d48; margin-top: 10px; min-height: 25px; }
+
+        /* 彈出視窗 Modal 樣式 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.75); display: none;
+            justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px);
+        }
+        .modal-card {
+            background: #1e293b; color: white; width: 360px; padding: 25px;
+            border-radius: 16px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s ease-out; position: relative;
+        }
+        @keyframes modalPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-title-sub { font-size: 14px; color: #94a3b8; margin-bottom: 5px; }
+        .modal-title-main { font-size: 28px; font-weight: bold; color: #f8fafc; margin-bottom: 15px; }
+        .modal-badge-box {
+            background: #0f172a; border-radius: 10px; padding: 15px; margin-bottom: 20px; border: 1px solid #334155;
+        }
+        .modal-badge-title { font-size: 16px; font-weight: bold; color: #fbbf24; margin-bottom: 5px; }
+        .modal-badge-desc { font-size: 13px; color: #cbd5e1; }
+        .modal-map-btn {
+            background: #2563eb; color: white; border: none; width: 100%; padding: 14px;
+            font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: background 0.2s; box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+        }
+        .modal-map-btn:hover { background: #1d4ed8; }
+        .modal-close-text {
+            margin-top: 15px; font-size: 14px; color: #94a3b8; cursor: pointer;
+            transition: color 0.2s;
+        }
+        .modal-close-text:hover { color: #f8fafc; }
     </style>
 </head>
 <body>
@@ -76,7 +109,7 @@
         <!-- 左欄：2048 遊戲 -->
         <div class="side-panel">
             <div class="game-card">
-                <h3>🎮 2048</h3>
+                <h3>🎮 2048 </h3>
                 <p style="font-size: 11px; color: #666; margin: 4px 0;">使用方向鍵控制移動</p>
                 <div id="game2048-board"></div>
                 <div style="font-size: 13px; font-weight: bold;">分數：<span id="score2048">0</span></div>
@@ -101,7 +134,7 @@
         <!-- 右欄：俄羅斯方塊 Tetris -->
         <div class="side-panel">
             <div class="game-card">
-                <h3>🕹️ Tetris Battle</h3>
+                <h3>🕹️Tetris Battle</h3>
                 <div class="tetris-header">
                     <div>
                         <span>HOLD 暫存：</span><br>
@@ -132,6 +165,24 @@
             <div class="wheel-center-btn" onclick="spinWheel()">EAT</div>
         </div>
         <div id="roulette-result">點擊中心 EAT 按鈕開始旋轉轉盤！</div>
+    </div>
+
+    <!-- 抽中美食彈出視窗 (Modal) -->
+    <div id="resultModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-title-sub">命運的選擇是</div>
+            <div id="modalFoodName" class="modal-title-main">牛排</div>
+            
+            <div class="modal-badge-box">
+                <div id="modalBadgeTitle" class="modal-badge-title">⭐ 大口吃肉</div>
+                <div id="modalBadgeDesc" class="modal-badge-desc">來點蛋白質補充體力</div>
+            </div>
+
+            <button id="modalMapBtn" class="modal-map-btn" onclick="openGoogleMap()">
+                📍 搜尋附近牛排
+            </button>
+            <div class="modal-close-text" onclick="closeModal()">不滿意？再轉一次</div>
+        </div>
     </div>
 
     <script>
@@ -280,14 +331,11 @@
             ctxTetris = canvasTetris.getContext('2d');
             canvasHold = document.getElementById('hold-canvas');
             ctxHold = canvasHold.getContext('2d');
-            
             boardTetris = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
             drawTetris();
         }
 
-        function startTetrisGame() {
-            initTetris();
-        }
+        function startTetrisGame() { initTetris(); }
 
         function initTetris() {
             if (gameInterval) clearInterval(gameInterval);
@@ -456,12 +504,35 @@
             }
         });
 
-        // --- 彩色大轉盤邏輯 (放大字體) ---
+        // --- 彩色大轉盤邏輯 (帶有 Google Map 跳轉 Modal) ---
         const foods = [
             '自己煮', '火鍋', '牛排', '中餐', '西餐', '日式料理', '速食', 
             '泰式料理', '韓式料理', '義式料理', '早午餐', '燒肉', '越南料理', 
             '印度料理', '港式飲茶', '拉麵', '墨西哥料理', '甜點下午茶', '素食', '海鮮'
         ];
+        const foodDetails = {
+            '自己煮': { title: '🍳 在家當主廚', desc: '健康衛生又省錢，展現精湛廚藝的時候到了！', isSelf: true },
+            '火鍋': { title: '🔥 暖心暖胃', desc: '肉片青菜通通丟進去，聚餐第一首選！', query: '火鍋' },
+            '牛排': { title: '⭐ 大口吃肉', desc: '來點蛋白質補充體力，犒賞辛苦的自己', query: '牛排' },
+            '中餐': { title: '🥢 經典家常', desc: '鑊氣十足的熱炒與道地中式料理', query: '中式料理' },
+            '西餐': { title: '🍷 質感享受', desc: '享受精緻美味的異國排餐與氛圍', query: '西餐廳' },
+            '日式料理': { title: '🍣 鮮美清爽', desc: '壽司、生魚片或丼飯，美味不負期待', query: '日式料理' },
+            '速食': { title: '🍔 快樂泉源', desc: '炸雞漢堡薯條，今天先不管熱量了！', query: '速食店' },
+            '泰式料理': { title: '🌶️ 酸辣開胃', desc: '椒麻雞、綠咖哩，秒飛泰國好滋味', query: '泰式料理' },
+            '韓式料理': { title: '🇰🇷 韓風爆擊', desc: '烤肉、部隊鍋、石鍋拌飯大滿足', query: '韓式料理' },
+            '義式料理': { title: '🧀 濃郁起司', desc: '義大利麵、窯烤披薩香氣四溢', query: '義式餐廳' },
+            '早午餐': { title: '☕ 悠閒愜意', desc: '豐盛拼盤與好喝咖啡開啟美好一天', query: '早午餐' },
+            '燒肉': { title: '🥩 碳香四溢', desc: '聽著肉片在烤盤上滋滋作響的療癒感', query: '燒肉' },
+            '越南料理': { title: '🍜 清爽河粉', desc: '酸甜清香的越式牛肉河粉與春捲', query: '越南料理' },
+            '印度料理': { title: '🫓 濃郁香料', desc: '沾著咖哩享用現烤的道地印度烤餅', query: '印度料理' },
+            '港式飲茶': { title: '🥟 蒸籠點心', desc: '蝦餃、燒賣、腸粉與絲襪奶茶', query: '港式飲茶' },
+            '拉麵': { title: '🍜 濃厚湯頭', desc: '職人熬煮的濃郁豚骨拉麵與叉燒', query: '拉麵' },
+            '墨西哥料理': { title: '🌮 異國風味', desc: '塔可餅與莎莎醬的完美結合', query: '墨西哥料理' },
+            '甜點下午茶': { title: '🍰 療癒甜心', desc: '蛋糕與下午茶，撫慰上班疲憊的心靈', query: '下午茶 甜點' },
+            '素食': { title: '🥗 輕盈無負擔', desc: '品嚐美味健康的蔬食料理', query: '素食餐廳' },
+            '海鮮': { title: '🦐 鮮甜海味', desc: '享受來自大海的頂級鮮美滋味', query: '海鮮餐廳' }
+        };
+
         const wheelColors = [
             '#10b981', '#f97316', '#fb923c', '#fbbf24', '#3b82f6', '#8b5cf6', 
             '#ef4444', '#14b8a6', '#ec4899', '#0ea5e9', '#84cc16', '#dc2626', 
@@ -472,6 +543,7 @@
         let wheelCanvas, wheelCtx;
         let currentAngle = 0;
         let isSpinning = false;
+        let lastSelectedFood = '';
 
         function initWheel() {
             wheelCanvas = document.getElementById('wheel-canvas');
@@ -504,12 +576,11 @@
                 wheelCtx.lineWidth = 2;
                 wheelCtx.stroke();
 
-                // 繪製放大且加粗的文字
                 wheelCtx.save();
                 wheelCtx.rotate(startAngle + arcSize / 2);
                 wheelCtx.textAlign = 'right';
                 wheelCtx.fillStyle = '#ffffff';
-                wheelCtx.font = 'bold 15px sans-serif'; // 字體放大並加粗
+                wheelCtx.font = 'bold 15px sans-serif';
                 wheelCtx.shadowColor = 'rgba(0, 0, 0, 0.8)';
                 wheelCtx.shadowBlur = 4;
                 wheelCtx.fillText(foods[i], radius - 20, 5);
@@ -549,12 +620,45 @@
                 } else {
                     currentAngle = targetAngle % 360;
                     isSpinning = false;
-                    let winningFood = foods[randomSlice];
-                    document.getElementById('roulette-result').innerText = `🎉 恭喜抽中：【 ${winningFood} 】！`;
+                    lastSelectedFood = foods[randomSlice];
+                    document.getElementById('roulette-result').innerText = `🎉 恭喜抽中：【 ${lastSelectedFood} 】！`;
+                    
+                    // 彈出精美視窗
+                    showModal(lastSelectedFood);
                 }
             }
 
             requestAnimationFrame(animateSpin);
+        }
+
+        function showModal(foodName) {
+            let info = foodDetails[foodName] || { title: '😋 美味選擇', desc: '好好享受這一餐吧！', query: foodName };
+            document.getElementById('modalFoodName').innerText = foodName;
+            document.getElementById('modalBadgeTitle').innerText = info.title;
+            document.getElementById('modalBadgeDesc').innerText = info.desc;
+
+            let btn = document.getElementById('modalMapBtn');
+            if (info.isSelf) {
+                btn.innerHTML = '🍳 今天就在家好好煮一頓吧！';
+                btn.onclick = closeModal;
+            } else {
+                btn.innerHTML = `📍 搜尋附近${foodName}`;
+                btn.onclick = openGoogleMap;
+            }
+
+            document.getElementById('resultModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('resultModal').style.display = 'none';
+        }
+
+        function openGoogleMap() {
+            // 結合內湖辦公室地點在地搜尋
+            let keyword = `附近 ${lastSelectedFood}`;
+            let mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(keyword)}`;
+            window.open(mapUrl, '_blank');
+            closeModal();
         }
     </script>
 </body>
